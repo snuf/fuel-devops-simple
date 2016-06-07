@@ -178,7 +178,11 @@ validateAndSetOptions() {
   fi
   export LIBVIRT_DEFAULT_URI=$libVirtURL
   export NODES_COUNT=6
-  export ENV_NAME=fuel_system_test-$fuelVersion
+  export ENV_NAME=fuel_system_test
+  if [ "$fuelVersion" != "7.0" ]; then
+    export ENV_NAME=fuel_system_test-$fuelVersion
+  fi
+
   export VENV_PATH=$WORKING_DIR/fuel-devops-venv
   # bug in libvirt with resume that can't change the cpu
   #
