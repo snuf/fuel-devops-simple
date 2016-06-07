@@ -22,7 +22,7 @@ installRequirements() {
 
   sudo apt-get update && sudo apt-get upgrade -y
   sudo apt-get install --yes python-virtualenv libpq-dev libgmp-dev pkg-config
-  pip install pip virtualenv --upgrade
+  sudo pip install pip virtualenv --upgrade
   hash -r
 }
 
@@ -48,10 +48,7 @@ setupVirshPool() {
     # chmod 775 $storagePoolLoc
   fi
   set +e
-  virsh pool-info $storagePool | grep inactive
-  if [ "$?" == "0" ]; then
-    virsh pool-start $storagePool
-  fi
+  virsh pool-start $storagePool
   set -e
 }
 
@@ -65,14 +62,16 @@ editGroups() {
 
 exportDB() {
   db=$1
+  ver=$2
   if [ "$db" == "sqlite" ]; then
-    export DEVOPS_DB_NAME=$WORKING_DIR/fuel-devops
+    export DEVOPS_DB_NAME=$WORKING_DIR/fuel-devops-$ver
     export DEVOPS_DB_ENGINE="django.db.backends.sqlite3"
   fi
 }
 
 setupDB() {
   db=$1
+  ver=$2
   if [ "$db" == "postgres" ]; then
     # setup postgresql
     sudo apt-get install --yes postgresql
@@ -82,10 +81,10 @@ setupDB() {
     sudo service postgresql restart
     sudo -u postgres psql -c \
       "CREATE ROLE fuel_devops WITH LOGIN PASSWORD 'fuel_devops'"
-    sudo -u postgres createdb fuel_devops -O fuel_devops
+    sudo -u postgres createdb fuel_devops-$ver -O fuel_devops-$ver
   elif [ "$db" == "sqlite" ]; then
     sudo apt-get install --yes libsqlite3-0
-    exportDB $db
+    exportDB $db $ver
   else
     echo "Database $db not supported!"
     exit 1
@@ -179,7 +178,7 @@ validateAndSetOptions() {
   fi
   export LIBVIRT_DEFAULT_URI=$libVirtURL
   export NODES_COUNT=6
-  export ENV_NAME=fuel_system_test
+  export ENV_NAME=fuel_system_test-$fuelVersion
   export VENV_PATH=$WORKING_DIR/fuel-devops-venv
   # bug in libvirt with resume that can't change the cpu
   #
@@ -311,6 +310,7 @@ do
   shift
 done
 
+workDir=$workDir-$fuelVersion
 validateAndSetOptions
 setupVirshPool
 if [ "$remoteVirt" != "1" ]; then
@@ -320,7 +320,7 @@ fi
 if [ -d "$WORKING_DIR/fuel-devops-venv" ]; then
   cd $WORKING_DIR
   . fuel-devops-venv/bin/activate
-  exportDB $database
+  exportDB $database $fuelVersion
   setupFuelQA
   copyInSettingsFile $settingsFile
 else
@@ -332,7 +332,7 @@ else
     setupKVM
   fi
   setupFuelDevops $fuelVersion
-  setupDB $database
+  setupDB $database $fuelVersion
   setupFuelQA
   copyInSettingsFile $settingsFile
 fi
